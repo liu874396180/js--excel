@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>小松鼠-js读取Excel演示</title>
+    <script src="./xlsx.full.min.js"></script>
+    <style>
+      /* 添加表格边框样式 */
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      /* 固定表头 */
+      thead {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background-color: #fff; /* 如果需要，可以添加背景色 */
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <input type="file" onchange="readExcel(this,1)" />
+      <input type="file" onchange="readExcel(this,2)" />
+      <input type="text" id="inputText" value="" placeholder="请输入对比字段" />
+      <input type="button" value="读取Excel对比" onclick="compare()" />
+      <p id="result" style="color: #67c23a">
+        <span class="excel-result1"></span>
+        <span class="excel-result2"></span>
+        <span class="excel-result3" style="color: #409eff"></span>
+        <span class="excel-result4"></span>
+      </p>
+    </div>
+    <br />
+    <br />
+    <div id="tableContainer"></div>
+    <script>
+      let fileData1 = [],
+        fileData2 = [],
+        theadRedList = [],
+        newCreatedData = 0;
+      function readExcel(file_obj, ind) {
+        var reader = new FileReader();
+        var file = file_obj.files[0];
+        reader.readAsBinaryString(file);
+        reader.onload = function (e) {
+          var data = e.target.result;
+          var wb = XLSX.read(data, { type: "binary" });
+          sheetName = wb.SheetNames[0]; // 获取文档中第一个sheet页签的名字
+          sheets = wb.Sheets[sheetName]; // 获sheet名页签下的数据
+          if (ind === 1) {
+            fileData1 = XLSX.utils.sheet_to_json(sheets);
+            document.body.getElementsByClassName(
+              "excel-result" + ind
+            )[0].innerHTML = `读取${file.name}成功！共${fileData1.length}条数据`;
+          } else if (ind === 2) {
+            fileData2 = XLSX.utils.sheet_to_json(sheets);
+            document.body.getElementsByClassName(
+              "excel-result" + ind
+            )[0].innerHTML = `读取${file.name}成功！共${fileData2.length}条数据`;
+          }
+        };
+      }
+      function compare() {
+        let data = [];
+        let inputVal = document.getElementById("inputText").value;
+
+        if (fileData1.length == 0 || fileData2.length == 0) {
+          alert("请先选择文件");
+          return;
+        }
+        if (!inputVal.trim()) {
+          alert("请输入字段名称");
+          return;
+        }
+        let allKeys = Object.keys(fileData1[0]);
+        if (!allKeys.includes(inputVal.trim())) {
+          alert("请输入正确的字段名称");
+          return;
+        }
+
+        if (fileData1.length > fileData2.length) {
+          data = findDataDifference(fileData1, fileData2, inputVal.trim());
+        } else {
+          data = findDataDifference(fileData2, fileData1, inputVal.trim());
+        }
+        document.body.getElementsByClassName(
+          "excel-result4"
+        )[0].innerHTML = `对比已结束:共${data.length}条数据`;
+        // console.log("不一致数据:", data);
+        if (data.length == 0) {
+          alert("数据一致");
+        } else {
+          createTable(data);
+        }
+      }
+
+      function findDataDifference(data1, data2, key) {
+        const result = [];
+        theadRedList = [];
+        // 遍历第一组数据
+        for (const item1 of data1) {
+          // 查找第二组数据中与当前项相同键值的项
+          const matchingItem = data2.find((item2) => item2[key] === item1[key]);
+
+          // 如果找不到匹配项，说明该项只在第一组数据中出现
+          if (!matchingItem) {
+            newCreatedData++;
+            for (const key in item1) {
+              if (Object.hasOwnProperty.call(item1, key)) {
+                item1[key] = item1[key] + "++++add";
+              }
+            }
+            result.push(item1);
+          } else {
+            // 如果找到匹配项，比较其他字段值是否相同
+            let isEqual = true;
+            for (const field in item1) {
+              if (item1.hasOwnProperty(field)) {
+                if (field !== key && item1[field] !== matchingItem[field]) {
+                  item1[field] = item1[field] + "++++red";
+                  if (!theadRedList.includes(field)) {
+                    theadRedList.push(field);
+                  }
+                  isEqual = false;
+                }
+              }
+            }
+            // 如果其他字段值不同，则将该项加入结果数组
+            if (!isEqual) {
+              result.push(item1);
+            }
+          }
+        }
+        document.body.getElementsByClassName(
+          "excel-result3"
+        )[0].innerHTML = `新增${newCreatedData}条数据`;
+        return result;
+      }
+
+      // 创建表格
+      const createTable = (data) => {
+        const tableContainer = document.getElementById("tableContainer");
+        const table = document.createElement("table");
+        const tbody = document.createElement("tbody");
+
+        // 创建表头
+        const thead = document.createElement("thead");
+        const trHead = document.createElement("tr");
+        for (const key in data[0]) {
+          const th = document.createElement("th");
+          if (theadRedList.includes(key)) {
+            th.style.color = "red";
+          }
+          th.textContent = key + "__" + countRedInField(data, key);
+          trHead.appendChild(th);
+        }
+        thead.appendChild(trHead);
+        table.appendChild(thead);
+
+        // 创建表格内容
+        data.forEach((item) => {
+          const trBody = document.createElement("tr");
+          for (const key in item) {
+            const td = document.createElement("td");
+
+            if (String(item[key]).includes("++++red")) {
+              td.style.color = "red";
+              td.textContent = item[key].replace("++++red", "");
+            } else if (String(item[key]).includes("++++add")) {
+              td.style.color = "#409EFF";
+              td.textContent = item[key].replace("++++add", "");
+            } else {
+              td.textContent = item[key];
+            }
+            trBody.appendChild(td);
+          }
+          tbody.appendChild(trBody);
+        });
+        table.appendChild(tbody);
+
+        // 添加表格到容器中
+        tableContainer.innerHTML = "";
+        tableContainer.appendChild(table);
+      };
+
+      function countRedInField(data, fieldName) {
+        let count = 0;
+        data.forEach((item) => {
+          if (item[fieldName] && typeof item[fieldName] === "string") {
+            if (item[fieldName].includes("++++red")) {
+              count++;
+            }
+          }
+        });
+
+        return count;
+      }
+    </script>
+  </body>
+</html>
