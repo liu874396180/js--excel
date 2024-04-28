@@ -1,7 +1,7 @@
 # 小松鼠-js读取Excel对比演示
 
 ## 项目截图
- <img src="./img/image.png" width="800" height="600">
+ <img src="./img/image.png">
 
 ## 简介
 本项目是一个简单的网页应用，使用JavaScript和[xlsx.js](https://github.com/SheetJS/sheetjs)库来读取两个Excel文件，并对比这两个文件中的数据差异。用户可以选择两个Excel文件，指定一个对比字段，程序会高亮显示新增的数据行以及不同数据行中的差异字段。
