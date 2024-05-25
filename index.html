@@ -59,13 +59,17 @@
           var wb = XLSX.read(data, { type: "binary" });
           sheetName = wb.SheetNames[0]; // 获取文档中第一个sheet页签的名字
           sheets = wb.Sheets[sheetName]; // 获sheet名页签下的数据
+          const dataJson = XLSX.utils.sheet_to_json(sheets,{
+            Header:0,
+            defval:"空"
+          });
           if (ind === 1) {
-            fileData1 = XLSX.utils.sheet_to_json(sheets);
+            fileData1 = dataJson;
             document.body.getElementsByClassName(
               "excel-result" + ind
             )[0].innerHTML = `读取${file.name}成功！共${fileData1.length}条数据`;
           } else if (ind === 2) {
-            fileData2 = XLSX.utils.sheet_to_json(sheets);
+            fileData2 = dataJson
             document.body.getElementsByClassName(
               "excel-result" + ind
             )[0].innerHTML = `读取${file.name}成功！共${fileData2.length}条数据`;
